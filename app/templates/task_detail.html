@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% block title %}任务 #{{ task.id }} · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>任务 #{{ task.id }} · {{ task.employee_name }}</h1>
+    <div class="sub">{{ task.enterprise_code }} {{ task.enterprise_name }} · {{ task.window_label }} · {{ task.action_label }} · 生效 {{ task.effective_month }}</div></div>
+  <div class="row">
+    {% if task.status not in ('success','duplicate') %}
+      <button class="btn" data-action="run" data-id="{{ task.id }}">立即执行</button>
+      <button class="btn secondary" data-action="skip" data-id="{{ task.id }}"
+              data-confirm="确认跳过该任务？（不计为成功）">跳过</button>
+      <button class="btn danger" data-action="cancel" data-id="{{ task.id }}"
+              data-confirm="确认取消该任务？">取消</button>
+    {% endif %}
+    {% if task.receipt_path %}<a class="btn" href="/receipts/{{ task.id }}" target="_blank">查看回执 PDF</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1.2fr 1fr">
+  <div class="panel">
+    <h2>基本信息</h2>
+    <dl class="kv">
+      <dt>状态</dt><dd><span class="badge {{ status_class(task.status) }}">{{ status_label(task.status) }}</span>
+        {% if task.error_code %}<span class="badge err">{{ err.label }}</span>{% endif %}</dd>
+      <dt>业务指纹</dt><dd class="mono">{{ task.fingerprint }}</dd>
+      <dt>证件号码</dt><dd class="mono">{{ task.id_card }}</dd>
+      <dt>社保编号</dt><dd class="mono">{{ task.social_no or '—' }}</dd>
+      <dt>调整前基数</dt><dd class="tnum">{{ '%.2f 元'|format(task.base_before) if task.base_before else '—' }}</dd>
+      <dt>申报基数</dt><dd class="tnum">{{ '%.2f 元'|format(task.base_after) if task.base_after else '—' }}</dd>
+      <dt>尝试次数</dt><dd class="tnum">{{ task.attempts }}</dd>
+      <dt>当前阶段</dt><dd>{{ task.last_stage or '—' }}</dd>
+      <dt>受理编号</dt><dd class="mono">{{ task.receipt_no or '—' }}</dd>
+      <dt>批次</dt><dd>{% if task.batch_id %}<a href="/batches/{{ task.batch_id }}" class="mono">{{ task.batch_id[:10] }}</a>{% else %}—{% endif %}</dd>
+      <dt>创建 / 完成</dt><dd>{{ task.created_at|ts }} → {{ task.completed_at|ts }}</dd>
+    </dl>
+
+    {% if err %}
+    <h2 style="margin-top:22px">异常归类</h2>
+    <div class="alert {{ 'err' if task.status == 'failed' else 'warn' }}">
+      <b>{{ err.label }}</b> · <span class="mono">{{ task.error_code }}</span><br>
+      {{ task.error_message or '' }}<br>
+      <span class="muted">处置建议：{{ err.hint }}</span>
+    </div>
+
+    {% if task.status not in ('success','duplicate') %}
+    <h2>修正后重跑</h2>
+    <p class="muted" style="font-size:12.5px">修改字段不会改变业务指纹（除非改证件号/生效月份），重跑时会先到站点核对是否已受理，不会重复提交。</p>
+    <form class="fix-form">
+      <div class="row">
+        <div class="field" style="flex:1"><label class="fl">姓名</label>
+          <input type="text" name="employee_name" value="{{ task.employee_name }}"></div>
+        <div class="field" style="flex:1"><label class="fl">证件号码</label>
+          <input type="text" name="id_card" value="{{ task.id_card }}"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1"><label class="fl">社保编号</label>
+          <input type="text" name="social_no" value="{{ task.social_no or '' }}"></div>
+        <div class="field" style="flex:1"><label class="fl">申报基数</label>
+          <input type="text" name="base_after" value="{{ task.base_after or '' }}"></div>
+      </div>
+      <div class="row">
+        <div class="field" style="flex:1"><label class="fl">生效月份</label>
+          <input type="text" name="effective_month" value="{{ task.effective_month }}"></div>
+        <div class="field" style="display:flex;align-items:flex-end"><button class="btn" type="button"
+          data-action="fix" data-id="{{ task.id }}">保存修正并重新排队</button></div>
+      </div>
+    </form>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>执行记录</h2>
+    {% if executions %}
+      {% for x in executions %}
+      <div style="border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b>第 {{ x.attempt }} 次 · {{ x.stage or x.status }}</b>
+          <span class="badge {{ 'ok' if x.status=='success' else ('err' if x.status=='failed' else 'warn') }}">{{ x.status }}</span>
+        </div>
+        <div class="muted" style="font-size:12px;margin:5px 0">{{ x.started_at|ts }} → {{ x.finished_at|ts }}
+          {% if x.error_code %}· <span class="mono">{{ x.error_code }}</span>{% endif %}</div>
+        {% if x.log_obj and x.log_obj.note %}<div style="font-size:12.5px">{{ x.log_obj.note }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}<div class="empty">暂无执行记录</div>{% endif %}
+
+    <h2 style="margin-top:18px">审计事件</h2>
+    <table>
+      <tbody>
+      {% for e in events %}
+        <tr><td class="muted" style="white-space:nowrap;font-size:11.5px">{{ e.ts|ts }}</td>
+            <td style="font-size:12.5px">{{ e.action }}<div class="muted" style="font-size:11px">{{ e.actor }}</div></td></tr>
+      {% else %}
+        <tr><td class="muted">暂无</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if shots %}
+<div class="panel">
+  <h2>过程截图</h2>
+  <div class="shot-grid">
+    {% for s in shots %}
+      <div class="shot"><a href="{{ s.url }}" target="_blank"><img src="{{ s.url }}" alt="{{ s.name }}"></a>
+        <div class="cap">{{ s.name }}</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

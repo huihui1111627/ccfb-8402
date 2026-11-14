@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Mock 短信网关{% endblock %}
+{% block brand %}Mock 短信网关（演示）{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:900px">
+  <div class="card">
+    <h1>短信发出记录</h1>
+    <p class="muted">RPA 通过 <span class="mono">GET /mock/sms/api/latest?phone=...&amp;purpose=login</span> 取验证码。
+    刷新页面可看到最新验证码。</p>
+    <table style="margin-top:14px">
+      <thead><tr><th style="width:70px">ID</th><th style="width:130px">手机号</th><th>内容</th><th style="width:90px">验证码</th><th style="width:160px">时间</th></tr></thead>
+      <tbody>
+      {% for m in items %}
+        <tr><td class="mono">{{ m.id }}</td><td class="mono">{{ m.phone }}</td>
+            <td>{{ m.body }}</td><td class="mono" style="font-weight:700;font-size:15px">{{ m.code }}</td>
+            <td class="muted">{{ m.created_text }}</td></tr>
+      {% else %}
+        <tr><td colspan="5" class="muted">暂无短信。发起一次登录即可看到。</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="actions">
+      <button class="btn secondary" onclick="location.reload()">刷新</button>
+      <a class="btn secondary" href="/mock/si/login">去社保登录</a>
+      <a class="btn secondary" href="/mock/hf/login">去公积金登录</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

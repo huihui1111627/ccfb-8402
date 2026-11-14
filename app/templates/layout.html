@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}申报 RPA 控制台{% endblock %}</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<aside class="sidebar">
+  <div class="logo">
+    <span class="logo-mark">RPA</span>
+    <span class="logo-text">社保公积金申报</span>
+  </div>
+  <nav>
+    <a href="/" class="{{ 'active' if page=='dashboard' }}" data-nav="dashboard"><span>总览</span></a>
+    <a href="/enterprises" class="{{ 'active' if page=='enterprises' }}" data-nav="enterprises"><span>企业账号</span></a>
+    <a href="/import" class="{{ 'active' if page=='import' }}" data-nav="import"><span>花名册导入</span></a>
+    <a href="/tasks" class="{{ 'active' if page=='tasks' }}" data-nav="tasks"><span>待办清单</span>
+      {% if nav_counts and nav_counts.pending %}<b class="pill">{{ nav_counts.pending }}</b>{% endif %}
+    </a>
+    <a href="/queue" class="{{ 'active' if page=='queue' }}" data-nav="queue"><span>执行队列</span>
+      {% if nav_counts and nav_counts.running %}<b class="pill live">{{ nav_counts.running }}</b>{% endif %}
+    </a>
+    <a href="/exceptions" class="{{ 'active' if page=='exceptions' }}" data-nav="exceptions"><span>异常处理</span>
+      {% if nav_counts and nav_counts.exceptions %}<b class="pill warn">{{ nav_counts.exceptions }}</b>{% endif %}
+    </a>
+    <a href="/receipts" class="{{ 'active' if page=='receipts' }}" data-nav="receipts"><span>回执归档</span></a>
+    <a href="/audit" class="{{ 'active' if page=='audit' }}" data-nav="audit"><span>审计日志</span></a>
+  </nav>
+  <div class="sidebar-foot">
+    <a href="{{ mock_url }}" target="_blank" rel="noopener">打开 Mock 站点 ↗</a>
+    <a href="{{ mock_url }}/mock/admin" target="_blank" rel="noopener">故障注入台 ↗</a>
+    <a href="{{ mock_url }}/mock/sms/outbox" target="_blank" rel="noopener">短信网关 ↗</a>
+    <div class="env">环境：本地演示 · 引擎 {{ engine_status }}</div>
+  </div>
+</aside>
+<main>
+  {% block body %}{% endblock %}
+</main>
+<div id="toast" class="toast"></div>
+<script src="/static/app.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

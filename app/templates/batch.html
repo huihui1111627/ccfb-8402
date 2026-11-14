@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block title %}批次 {{ batch.id[:10] }} · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>批次 {{ batch.id[:10] }}</h1>
+    <div class="sub">{{ batch.filename }} · 共 {{ batch.total }} 行 · 导入于 {{ batch.created_at|ts }}</div></div>
+  <div class="row">
+    <button class="btn" data-action="batch-run" data-id="{{ batch.id }}">全部排队执行</button>
+    <a class="btn secondary" href="/batches/{{ batch.id }}/result.xlsx">下载结果花名册</a>
+    <a class="btn secondary" href="/import">返回导入</a>
+  </div>
+</div>
+
+<div class="stat-row">
+  <div class="card-stat"><div class="label">本批行数</div>
+    <div class="value">{{ counts.get('_rows', 0) }}</div>
+    <div class="foot">去重后 {{ counts.get('_distinct', 0) }} 个任务</div></div>
+  {% for k, label in [('success','申报成功'),('needs_fix','待修正'),
+                      ('failed','失败'),('pending','排队/待执行')] %}
+  <div class="card-stat"><div class="label">{{ label }}</div>
+    <div class="value">{{ counts.get(k, 0) }}</div>
+    <div class="foot"></div></div>
+  {% endfor %}
+</div>
+
+<div class="panel">
+  <h2>任务明细</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>行号</th><th>任务</th><th>企业</th><th>险种</th><th>业务</th><th>姓名</th><th>证件号</th>
+      <th>生效月</th><th>状态</th><th>受理编号</th><th></th></tr></thead>
+    <tbody>
+    {% for t in tasks %}
+      <tr><td class="tnum">{{ t.row_no }}</td>
+          <td class="mono"><a href="/tasks/{{ t.id }}">#{{ t.id }}</a>
+              {% if t.outcome and t.outcome != 'created' %}<div><span class="badge muted" style="font-size:10px">{{ t.outcome }}</span></div>{% endif %}</td>
+          <td><span class="mono" style="font-size:11.5px">{{ t.enterprise_code }}</span></td>
+          <td><span class="badge info">{{ t.window_label }}</span></td>
+          <td>{{ t.action_label }}</td><td><b>{{ t.employee_name }}</b></td>
+          <td class="mono" style="font-size:11.5px">{{ t.id_card }}</td>
+          <td class="tnum">{{ t.effective_month }}</td>
+          <td><span class="badge {{ status_class(t.status) }}">{{ status_label(t.status) }}</span></td>
+          <td class="mono" style="font-size:11.5px">{{ t.receipt_no or '—' }}</td>
+          <td>{% if t.receipt_path %}<a class="btn secondary small" href="/receipts/{{ t.id }}" target="_blank">回执</a>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+{% if quarantine %}
+<div class="panel">
+  <h2>本批隔离行</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>行号</th><th>原因</th><th>原始内容</th></tr></thead>
+    <tbody>
+    {% for q in quarantine %}
+      <tr><td class="tnum">{{ q.row_no }}</td><td><span class="badge warn">{{ q.reason }}</span></td>
+          <td style="font-size:12px">{{ q.pretty }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

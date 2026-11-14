@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+{% block title %}异常处理 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>异常处理</h1>
+    <div class="sub">站点校验失败自动归类 · 修正后重跑会先核对，绝不重复提交</div></div>
+</div>
+
+<div class="grid" style="grid-template-columns: 300px 1fr; align-items:start">
+  <div class="panel">
+    <h2>按原因归类</h2>
+    <table>
+      <tbody>
+      <tr class="{{ 'selected' if not code }}" style="cursor:pointer" onclick="location='/exceptions'">
+        <td>全部异常</td><td style="text-align:right" class="tnum">{{ groups|sum(attribute='count') }}</td></tr>
+      {% for g in groups %}
+        <tr style="cursor:pointer" onclick="location='/exceptions?code={{ g.code }}'">
+          <td>{{ g.label }}<div class="muted mono" style="font-size:11px">{{ g.code }}</div></td>
+          <td style="text-align:right"><span class="badge {{ 'err' if not g.auto_retry else 'warn' }}">{{ g.count }}</span></td></tr>
+      {% else %}
+        <tr><td class="empty">暂无异常</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    {% if code and ERROR_CATEGORIES.get(code) %}
+    {% set m = ERROR_CATEGORIES[code] %}
+    <div class="alert {{ 'warn' if m.retryable_after_fix else 'err' }}" style="margin-top:16px">
+      <b>{{ m.label }}</b><br>{{ m.hint }}<br>
+      <span class="muted" style="font-size:11.5px">
+        {% if m.auto_retry %}系统自动重试{% elif m.retryable_after_fix %}修正后可重跑{% else %}需运维介入{% endif %}
+      </span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>{{ '全部异常' if not code else ERROR_CATEGORIES.get(code, {}).get('label', code) }}
+      <span class="muted" style="font-size:12px;font-weight:400">共 {{ tasks|length }} 条</span></h2>
+
+    {% if tasks %}
+      {% for t in tasks %}
+      <div style="border:1px solid var(--line);border-radius:9px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <b>#{{ t.id }} {{ t.employee_name }}</b>
+            <span class="badge info" style="margin-left:6px">{{ t.window_label }}</span>
+            <span class="badge muted">{{ t.action_label }}</span>
+            <span class="badge {{ status_class(t.status) }}">{{ status_label(t.status) }}</span>
+            <div class="muted" style="font-size:12px;margin-top:3px">
+              {{ t.enterprise_code }} {{ t.enterprise_name }} · 生效 {{ t.effective_month }} · 尝试 {{ t.attempts }} 次
+            </div>
+          </div>
+          <div class="row">
+            <a class="btn secondary small" href="/tasks/{{ t.id }}">详情</a>
+            {% if t.status not in ('success','duplicate','running') %}
+              <button class="btn small" data-action="run" data-id="{{ t.id }}">重跑</button>
+              <button class="btn secondary small" data-action="skip" data-id="{{ t.id }}"
+                      data-confirm="确认跳过该任务？">跳过</button>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="alert {{ 'info' if t.error_code == 'quota_exceeded' else ('err' if not t.err_meta.auto_retry else 'warn') }}" style="margin:10px 0 8px">
+          <b>{{ t.err_meta.label }}</b> · <span class="mono">{{ t.error_code }}</span>
+          <div style="margin-top:4px">{{ t.error_message or '' }}</div>
+          <div class="muted" style="font-size:12px;margin-top:4px">{{ t.err_meta.hint }}</div>
+        </div>
+
+        {% if t.shots %}
+        <div class="shot-grid">
+          {% for s in t.shots[-4:] %}
+            <div class="shot">
+              <a href="{{ s.url }}" target="_blank"><img src="{{ s.url }}" alt=""></a>
+              <div class="cap">{{ s.name }}</div>
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if t.status not in ('success','duplicate') %}
+        <details style="margin-top:10px">
+          <summary style="cursor:pointer;font-size:12.5px;color:var(--brand)">修正字段后重跑</summary>
+          <form class="fix-form" style="margin-top:10px">
+            <div class="row">
+              <div class="field" style="flex:1"><label class="fl">姓名</label><input type="text" name="employee_name" value="{{ t.employee_name }}"></div>
+              <div class="field" style="flex:1"><label class="fl">证件号码</label><input type="text" name="id_card" value="{{ t.id_card }}"></div>
+              <div class="field" style="flex:1"><label class="fl">社保编号</label><input type="text" name="social_no" value="{{ t.social_no or '' }}"></div>
+            </div>
+            <div class="row">
+              <div class="field" style="flex:1"><label class="fl">申报基数</label><input type="text" name="base_after" value="{{ t.base_after or '' }}"></div>
+              <div class="field" style="flex:1"><label class="fl">生效月份</label><input type="text" name="effective_month" value="{{ t.effective_month }}"></div>
+              <div class="field" style="display:flex;align-items:flex-end">
+                <button class="btn" type="button" data-action="fix" data-id="{{ t.id }}">保存并重跑</button></div>
+            </div>
+          </form>
+        </details>
+        {% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">没有需要处理的异常。</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

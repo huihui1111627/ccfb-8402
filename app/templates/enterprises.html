@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+{% block title %}企业账号 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>企业账号</h1><div class="sub">共 {{ ents|length }} 家客户 · 账号密码用于 Playwright 登录，展示时脱敏</div></div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr 380px;align-items:start">
+  <div class="panel">
+    <h2>已备案客户</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>编码</th><th>企业名称</th><th>社保账号</th><th>公积金账号</th><th>预留手机</th>
+        <th>本月已完成</th><th>待办</th><th>异常</th><th>状态</th><th></th></tr></thead>
+      <tbody>
+      {% for e in ents %}
+        <tr>
+          <td class="mono"><a href="#" onclick="loadEnt({{ e.id }});return false">{{ e.code }}</a></td>
+          <td>{{ e.name }}</td>
+          <td class="mono" style="font-size:11.5px">{{ e.si_account }}</td>
+          <td class="mono" style="font-size:11.5px">{{ e.hf_account }}</td>
+          <td class="mono" style="font-size:11.5px">{{ e.phone }}</td>
+          <td class="tnum">{{ e.monthly_used }} / {{ e.monthly_quota }}</td>
+          <td class="tnum">{{ e.task_pending }}</td>
+          <td class="tnum" style="color:{{ 'var(--err)' if e.task_fix else 'inherit' }}">{{ e.task_fix }}</td>
+          <td>{% if e.active %}<span class="badge ok">启用</span>{% else %}<span class="badge muted">停用</span>{% endif %}</td>
+          <td style="white-space:nowrap">
+            <button class="btn secondary small" onclick="loadEnt({{ e.id }})">编辑</button>
+            <form method="post" action="/enterprises/{{ e.id }}/toggle" style="display:inline">
+              <button class="btn secondary small" type="submit">{{ '停用' if e.active else '启用' }}</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="form-title">新增企业</h2>
+    <form method="post" action="/enterprises" id="ent-form">
+      <div class="row">
+        <div class="field" style="flex:1"><label class="fl">企业编码</label>
+          <input type="text" name="code" id="f-code" required placeholder="C005"></div>
+        <div class="field" style="flex:2"><label class="fl">企业名称</label>
+          <input type="text" name="name" id="f-name" required placeholder="示例市……有限公司"></div>
+      </div>
+      <label class="fl">社保账号</label><input type="text" name="si_account" id="f-si-acc" required>
+      <label class="fl">社保密码 <span class="muted" style="font-weight:400">（留空则不修改）</span></label>
+      <input type="password" name="si_password" id="f-si-pwd" autocomplete="new-password">
+      <label class="fl">公积金账号</label><input type="text" name="hf_account" id="f-hf-acc" required>
+      <label class="fl">公积金密码 <span class="muted" style="font-weight:400">（留空则不修改）</span></label>
+      <input type="password" name="hf_password" id="f-hf-pwd" autocomplete="new-password">
+      <label class="fl">预留手机号 <span class="muted" style="font-weight:400">（短信验证码发这里）</span></label>
+      <input type="text" name="phone" id="f-phone" required>
+      <div class="row">
+        <div class="field" style="flex:1"><label class="fl">月配额</label>
+          <input type="number" name="monthly_quota" id="f-quota" value="500"></div>
+        <div class="field" style="flex:1"><label class="fl">优先级</label>
+          <input type="number" name="priority" id="f-priority" value="0"></div>
+      </div>
+      <input type="hidden" name="max_parallel" value="1">
+      <input type="hidden" name="active" id="f-active" value="1">
+      <div class="actions" style="margin-top:18px">
+        <button class="btn" type="submit">保存</button>
+        <button class="btn secondary" type="button" onclick="resetForm()">清空</button>
+      </div>
+      <p class="muted" style="font-size:11.5px;margin-top:12px">
+        账号密码明文存于本地 SQLite（演示用）。生产环境应接入 KMS/密钥库，并在控制台只展示掩码。
+      </p>
+    </form>
+  </div>
+</div>
+<script>
+const ENTS = {{ ents|tojson }};
+function loadEnt(id) {
+  const e = ENTS.find(x => x.id === id);
+  if (!e) return;
+  document.getElementById('form-title').textContent = '编辑 ' + e.code;
+  document.getElementById('f-code').value = e.code;
+  document.getElementById('f-code').readOnly = true;
+  document.getElementById('f-name').value = e.name;
+  document.getElementById('f-si-acc').value = e.si_account;
+  document.getElementById('f-hf-acc').value = e.hf_account;
+  document.getElementById('f-phone').value = e.phone;
+  document.getElementById('f-quota').value = e.monthly_quota;
+  document.getElementById('f-priority').value = e.priority;
+  document.getElementById('f-active').value = e.active;
+  document.getElementById('f-si-pwd').value = '';
+  document.getElementById('f-hf-pwd').value = '';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+function resetForm() {
+  document.getElementById('ent-form').reset();
+  document.getElementById('form-title').textContent = '新增企业';
+  document.getElementById('f-code').readOnly = false;
+}
+</script>
+{% endblock %}

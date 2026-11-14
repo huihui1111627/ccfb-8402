@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} · 受理回执{% endblock %}
+{% block brand %}{{ site_name }}{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="card">
+    <h1 style="color:#1a7f37">✔ 申报受理成功</h1>
+    <p class="muted">以下信息已同步至社会保险信息系统，请留存回执。</p>
+
+    <dl class="kv" style="margin-top:22px">
+      <dt>受理编号</dt><dd class="mono" id="receipt-no">{{ sub.receipt_no }}</dd>
+      <dt>单位名称</dt><dd>{{ enterprise.name }}</dd>
+      <dt>单位编号</dt><dd class="mono">{{ sub.enterprise_code }}</dd>
+      <dt>申报业务</dt><dd id="receipt-action">{{ action_labels.get(sub.action, sub.action) }}</dd>
+      <dt>姓名</dt><dd>{{ sub.employee_name }}</dd>
+      <dt>证件号码</dt><dd class="mono">{{ sub.id_card }}</dd>
+      <dt>业务指纹</dt><dd class="mono" id="receipt-fp">{{ sub.fingerprint }}</dd>
+      {% if sub.base_before %}<dt>调整前基数</dt><dd>{{ sub.base_before }} 元</dd>{% endif %}
+      {% if sub.base_after %}<dt>{% if sub.action == 'adjust' %}调整后基数{% else %}申报基数{% endif %}</dt><dd>{{ sub.base_after }} 元</dd>{% endif %}
+      <dt>生效月份</dt><dd>{{ sub.effective_month }}</dd>
+      <dt>受理时间</dt><dd>{{ sub.created_text }}</dd>
+      <dt>当前状态</dt><dd><span class="badge ok">已受理</span></dd>
+    </dl>
+
+    <div class="actions">
+      <button class="btn" onclick="window.print()" id="btn-print">打印回执</button>
+      <a class="btn secondary" href="{{ base }}/">返回首页</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

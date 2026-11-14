@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} · {{ step_title }}{% endblock %}
+{% block brand %}{{ site_name }}{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="card">
+    <div class="crumb">首页 / {{ action_labels.get(action, action) }} / {{ step_title }}</div>
+    <h1>{{ action_labels.get(action, action) }}</h1>
+    <p class="muted">单位：{{ enterprise.name }}（{{ enterprise.code }}）· 第 {{ step }} / {{ total_steps }} 步</p>
+
+    <div class="steps">
+      <div class="{{ 'done' if step > 1 else 'on' }}">1 填写信息</div>
+      <div class="{{ 'done' if step > 2 else ('on' if step == 2 else '') }}">2 确认信息</div>
+      <div class="{{ 'on' if step == 3 else '' }}">3 提交受理</div>
+    </div>
+
+    {% if error %}
+    <div class="alert err" id="error-box" data-error-code="{{ error_code }}">{{ error }}</div>
+    {% endif %}
+    {% if notice %}<div class="alert ok">{{ notice }}</div>{% endif %}
+
+    <form method="post" action="{{ base }}/declare" id="declare-form">
+      <input type="hidden" name="action" value="{{ action }}">
+      <input type="hidden" name="step" value="{{ step }}">
+      <input type="hidden" name="draft_id" value="{{ draft_id or '' }}">
+
+      {% if step == 1 %}
+        <label for="employee_name">姓名</label>
+        <input id="employee_name" name="employee_name" type="text" value="{{ v.employee_name or '' }}" required>
+
+        <label for="id_card">证件号码</label>
+        <input id="id_card" name="id_card" type="text" value="{{ v.id_card or '' }}" maxlength="18" required>
+
+        {% if action != 'add' %}
+        <label for="social_no">社保编号 <span class="muted" style="font-weight:400">（减员/调基选填，可凭证件号定位）</span></label>
+        <input id="social_no" name="social_no" type="text" value="{{ v.social_no or '' }}">
+        {% endif %}
+
+        {% if action == 'add' %}
+        <label for="base_after">申报缴费基数（元）</label>
+        <input id="base_after" name="base_after" type="text" value="{{ v.base_after or '' }}" required>
+        {% elif action == 'adjust' %}
+        <label for="base_after">调整后缴费基数（元）</label>
+        <input id="base_after" name="base_after" type="text" value="{{ v.base_after or '' }}" required>
+        {% endif %}
+
+        <label for="effective_month">生效月份</label>
+        <input id="effective_month" name="effective_month" type="text" value="{{ v.effective_month or '' }}"
+               placeholder="YYYY-MM" maxlength="7" required>
+
+        <label for="contact_phone">联系电话 <span class="muted" style="font-weight:400">（选填）</span></label>
+        <input id="contact_phone" name="contact_phone" type="tel" value="{{ v.contact_phone or '' }}">
+
+      {% elif step == 2 %}
+        <dl class="kv">
+          <dt>申报业务</dt><dd>{{ action_labels.get(action, action) }}</dd>
+          <dt>姓名</dt><dd id="v-name">{{ v.employee_name }}</dd>
+          <dt>证件号码</dt><dd class="mono" id="v-id">{{ v.id_card }}</dd>
+          {% if v.social_no %}<dt>社保编号</dt><dd class="mono">{{ v.social_no }}</dd>{% endif %}
+          {% if v.base_after %}<dt>{% if action == 'adjust' %}调整后基数{% else %}申报基数{% endif %}</dt><dd id="v-base">{{ v.base_after }} 元</dd>{% endif %}
+          <dt>生效月份</dt><dd id="v-month">{{ v.effective_month }}</dd>
+        </dl>
+        <p class="muted" style="margin-top:16px">请核对以上信息。提交后不可撤销，如需更正请到柜台办理。</p>
+
+      {% elif step == 3 %}
+        <div class="alert ok">信息已校验通过，请确认提交。</div>
+        <dl class="kv">
+          <dt>姓名</dt><dd>{{ v.employee_name }}</dd>
+          <dt>证件号码</dt><dd class="mono">{{ v.id_card }}</dd>
+          <dt>生效月份</dt><dd>{{ v.effective_month }}</dd>
+        </dl>
+        <input type="hidden" name="confirm" value="yes">
+      {% endif %}
+
+      <div class="actions">
+        {% if step == 1 %}
+          <button class="btn" type="submit" id="btn-next">下一步</button>
+        {% elif step == 2 %}
+          <button class="btn secondary" type="submit" name="back" value="1" formnovalidate id="btn-back">上一步</button>
+          <button class="btn" type="submit" id="btn-next">确认无误，继续</button>
+        {% else %}
+          <button class="btn secondary" type="submit" name="back" value="1" formnovalidate id="btn-back">上一步</button>
+          <button class="btn" type="submit" id="btn-submit-final">确认提交</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

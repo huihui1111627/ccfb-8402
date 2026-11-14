@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Mock 运维台{% endblock %}
+{% block brand %}Mock 政务站点运维台（演示 / 测试专用）{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:1100px">
+  <div class="card">
+    <h1>故障注入与站点状态</h1>
+    <p class="muted">这些开关只用于验证 RPA 的异常处理与幂等，真实站点没有。</p>
+    <form method="post" action="/mock/admin/settings">
+      <table style="margin-top:12px">
+        <tbody>
+          <tr><th style="width:280px">会话有效期（秒）</th>
+              <td><input type="text" name="session_ttl_seconds" value="{{ settings.get('session_ttl_seconds','600') }}"></td></tr>
+          <tr><th>提交前故障（下一个 N 次提交返回 500，未落库）</th>
+              <td><input type="text" name="fail_next_submit" value="{{ settings.get('fail_next_submit','0') }}"></td></tr>
+          <tr><th>响应丢失（下一个 N 次提交已落库但返回 504）</th>
+              <td><input type="text" name="drop_next_submit_response" value="{{ settings.get('drop_next_submit_response','0') }}"></td></tr>
+          <tr><th>每分钟限流（0 关闭）</th>
+              <td><input type="text" name="rate_limit_per_min" value="{{ settings.get('rate_limit_per_min','0') }}"></td></tr>
+          <tr><th>维护模式</th>
+              <td><label style="font-weight:400"><input type="checkbox" name="maintenance" value="1" {% if settings.get('maintenance')=='1' %}checked{% endif %}> 暂停受理</label></td></tr>
+          <tr><th>清理</th>
+              <td><label style="font-weight:400"><input type="checkbox" name="clear_sessions" value="1"> 清空登录会话与草稿</label>
+                  &nbsp;&nbsp;<label style="font-weight:400"><input type="checkbox" name="clear_submissions" value="1"> 清空提交流水</label></td></tr>
+        </tbody>
+      </table>
+      <div class="actions"><button class="btn" type="submit">保存</button></div>
+    </form>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h1>提交流水（最近 50 条）</h1>
+    <table style="margin-top:10px">
+      <thead><tr><th>受理号</th><th>站点</th><th>企业</th><th>业务</th><th>姓名</th><th>生效月</th><th>指纹</th><th>时间</th></tr></thead>
+      <tbody>
+      {% for s in subs %}
+        <tr><td class="mono">{{ s.receipt_no }}</td><td>{{ s.window }}</td><td class="mono">{{ s.enterprise_code }}</td>
+            <td>{{ s.action }}</td><td>{{ s.employee_name }}</td><td>{{ s.effective_month }}</td>
+            <td class="mono">{{ s.fingerprint }}</td><td class="muted">{{ s.created_text }}</td></tr>
+      {% else %}<tr><td colspan="8" class="muted">暂无提交。</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h1>活动会话</h1>
+    <table style="margin-top:10px">
+      <thead><tr><th>站点</th><th>企业</th><th>最后活动</th><th>sid</th></tr></thead>
+      <tbody>
+      {% for s in sessions %}
+        <tr><td>{{ s.window }}</td><td class="mono">{{ s.enterprise_code }}</td>
+            <td class="muted">{{ s.seen_text }}</td><td class="mono">{{ s.sid[:12] }}…</td></tr>
+      {% else %}<tr><td colspan="4" class="muted">无活动会话。</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

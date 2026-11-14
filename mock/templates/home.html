@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} · 首页{% endblock %}
+{% block brand %}{{ site_name }}{% endblock %}
+{% block body %}
+<div class="wrap">
+  <div class="card">
+    <div class="crumb">首页 / 单位申报</div>
+    <h1>{{ enterprise.name }}</h1>
+    <p class="muted">单位编号 {{ enterprise.code }} · 当前在册 <strong>{{ counts.active }}</strong> 人 · 本月已申报 <strong>{{ counts.monthly }}</strong> 笔</p>
+
+    {% if rate_notice %}<div class="alert warn">{{ rate_notice }}</div>{% endif %}
+
+    <h2>请选择申报业务</h2>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px">
+      <a class="btn" style="text-align:center;padding:22px 10px" href="{{ base }}/declare?action=add" id="act-add">人员增员</a>
+      <a class="btn" style="text-align:center;padding:22px 10px" href="{{ base }}/declare?action=remove" id="act-remove">人员减员</a>
+      <a class="btn" style="text-align:center;padding:22px 10px" href="{{ base }}/declare?action=adjust" id="act-adjust">缴费基数调整</a>
+    </div>
+
+    <h2>近期申报记录</h2>
+    {% if recent %}
+    <table>
+      <thead><tr><th>受理号</th><th>业务</th><th>姓名</th><th>生效月份</th><th>受理时间</th></tr></thead>
+      <tbody>
+      {% for r in recent %}
+        <tr><td class="mono"><a href="{{ base }}/receipt/{{ r.receipt_no }}">{{ r.receipt_no }}</a></td>
+            <td>{{ action_labels.get(r.action, r.action) }}</td><td>{{ r.employee_name }}</td>
+            <td>{{ r.effective_month }}</td><td>{{ r.created_text }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p class="muted">本月暂无申报记录。</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

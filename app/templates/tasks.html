@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% block title %}待办清单 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>待办清单</h1><div class="sub">共 {{ total }} 条 · 同企业串行执行，多企业并行 · 同一业务指纹只会提交一次</div></div>
+  <div class="row">
+    <a class="btn secondary" href="/import">导入花名册</a>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="tabs">
+    {% for key, label in status_tabs %}
+      <a href="/tasks?status={{ key }}{{ '&window=' + window if window }}{{ '&enterprise=' + enterprise if enterprise }}{{ '&q=' + q if q }}"
+         class="{{ 'active' if status == key }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <form method="get" action="/tasks" class="inline-form" style="margin-bottom:14px">
+    <input type="hidden" name="status" value="{{ status }}">
+    <div class="field"><label class="fl" style="margin-top:0">险种</label>
+      <select name="window"><option value="">全部</option>
+        {% for k, v in WINDOWS.items() %}<option value="{{ k }}" {{ 'selected' if window==k }}>{{ v.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label class="fl" style="margin-top:0">企业</label>
+      <select name="enterprise"><option value="">全部</option>
+        {% for e in ents %}<option value="{{ e.id }}" {{ 'selected' if enterprise|string==e.id|string }}>{{ e.code }} {{ e.name }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label class="fl" style="margin-top:0">业务</label>
+      <select name="action"><option value="">全部</option>
+        {% for k, v in ACTIONS.items() %}<option value="{{ k }}" {{ 'selected' if action==k }}>{{ v }}</option>{% endfor %}
+      </select></div>
+    <div class="field" style="flex:2"><label class="fl" style="margin-top:0">搜索</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="姓名 / 证件号 / 受理编号"></div>
+    <button class="btn" type="submit">筛选</button>
+  </form>
+
+  {% if tasks %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>企业</th><th>险种</th><th>业务</th><th>姓名</th><th>生效月</th>
+      <th>基数</th><th>状态</th><th>异常</th><th>尝试</th><th>受理编号</th><th style="width:170px">操作</th></tr></thead>
+    <tbody>
+    {% for t in tasks %}
+      <tr>
+        <td class="mono"><a href="/tasks/{{ t.id }}">{{ t.id }}</a></td>
+        <td><span class="mono" style="font-size:11.5px">{{ t.enterprise_code }}</span>
+            <div class="muted" style="font-size:11.5px">{{ t.enterprise_name }}</div></td>
+        <td><span class="badge info">{{ t.window_label }}</span></td>
+        <td>{{ t.action_label }}</td>
+        <td><b>{{ t.employee_name }}</b></td>
+        <td class="tnum">{{ t.effective_month }}</td>
+        <td class="tnum">{% if t.base_after %}{{ '%.0f'|format(t.base_after) }}{% else %}—{% endif %}</td>
+        <td><span class="badge {{ status_class(t.status) }}">{{ status_label(t.status) }}</span></td>
+        <td>{% if t.error_label %}<span class="badge {{ 'err' if t.status in ('failed','needs_fix') else 'warn' }}">{{ t.error_label }}</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="tnum">{{ t.attempts }}</td>
+        <td class="mono" style="font-size:11.5px">{{ t.receipt_no or '—' }}</td>
+        <td>
+          {% if t.status not in ('success','duplicate','running') %}
+            <button class="btn secondary small" data-action="run" data-id="{{ t.id }}">执行</button>
+          {% endif %}
+          {% if t.status == 'success' %}<a class="btn secondary small" href="/receipts/{{ t.id }}">回执</a>{% endif %}
+          <a class="btn secondary small" href="/tasks/{{ t.id }}">详情</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+
+  {% if pages > 1 %}
+  <div class="row" style="margin-top:16px;align-items:center;justify-content:center">
+    {% for p in range(1, pages + 1) if p <= 20 %}
+      <a class="btn secondary small {{ 'active' if p == page }}"
+         href="/tasks?status={{ status }}&window={{ window }}&enterprise={{ enterprise }}&action={{ action }}&q={{ q }}&page={{ p }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% else %}
+    <div class="empty">没有符合条件的任务。<a href="/import">导入花名册</a> 或 <a href="/tasks">清除筛选</a>。</div>
+  {% endif %}
+</div>
+{% endblock %}

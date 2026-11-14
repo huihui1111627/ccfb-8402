@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} · 登录{% endblock %}
+{% block brand %}{{ site_name }}{% endblock %}
+{% block body %}
+<div class="wrap" style="max-width:520px">
+  <div class="card">
+    <h1>{{ site_name }}</h1>
+    <p class="muted">单位经办人登录 · 短信验证码二次验证</p>
+
+    {% if error %}<div class="alert err" id="error-box">{{ error }}</div>{% endif %}
+    {% if notice %}<div class="alert ok">{{ notice }}</div>{% endif %}
+
+    <form method="post" action="{{ base }}/login" id="login-form">
+      <input type="hidden" name="step" value="{{ step }}">
+      <label for="account">单位账号</label>
+      <input id="account" name="account" type="text" value="{{ account or '' }}"
+             {% if step == 'sms' %}readonly{% else %}autofocus{% endif %} required>
+      <label for="password">登录密码</label>
+      <input id="password" name="password" type="password" value="{{ password or '' }}"
+             {% if step == 'sms' %}readonly{% endif %} required>
+
+      {% if step == 'sms' %}
+        <label for="code">短信验证码</label>
+        <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+               maxlength="6" autofocus required>
+        <p class="muted" id="sms-hint">验证码已发送至单位预留手机号 {{ phone_masked }}，5 分钟内有效。</p>
+        <input type="hidden" name="challenge" value="{{ challenge }}">
+      {% endif %}
+
+      <div class="actions">
+        {% if step == 'sms' %}
+          <button class="btn" type="submit" id="btn-submit">验证并登录</button>
+          <button class="btn secondary" type="submit" name="resend" value="1" id="btn-resend" formnovalidate>重新获取验证码</button>
+        {% else %}
+          <button class="btn" type="submit" id="btn-send">获取短信验证码</button>
+        {% endif %}
+      </div>
+    </form>
+    <p class="muted" style="margin-top:18px">演示账号：C001 / Si#2024C001（社保）· C001 / Hf#2024C001（公积金）</p>
+  </div>
+</div>
+{% endblock %}

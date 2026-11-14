@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block title %}花名册导入 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>花名册导入</h1>
+    <div class="sub">自动识别增员/减员/基数调整 · 坏行进隔离区不阻塞整批 · 重复行自动合并</div></div>
+  <div class="row"><a class="btn secondary" href="/import/template">下载模板</a></div>
+</div>
+
+{% if error %}<div class="alert err">{{ error }}</div>{% endif %}
+
+<div class="panel">
+  <h2>上传 Excel 花名册</h2>
+  <p class="muted" style="font-size:12.5px">
+    支持列名别名（企业编码/客户编码/单位编号…）。变更类型留空时，系统按基数变化自动推断：
+    有原基数无新基数 → 减员；有基数变化 → 基数调整；否则 → 增员。
+  </p>
+  <form method="post" action="/import" enctype="multipart/form-data" class="inline-form">
+    <div class="field" style="flex:3"><input type="file" name="file" accept=".xlsx,.xlsm" required></div>
+    <button class="btn" type="submit">上传并解析</button>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>导入批次</h2>
+  {% if batches %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>批次</th><th>源文件</th><th>行数</th><th>完成</th><th>异常</th><th>进度</th><th>导入时间</th><th></th></tr></thead>
+    <tbody>
+    {% for b in batches %}
+      <tr>
+        <td class="mono"><a href="/batches/{{ b.id }}">{{ b.id[:10] }}</a></td>
+        <td>{{ b.filename }}</td>
+        <td class="tnum">{{ b.total }}</td>
+        <td class="tnum" style="color:var(--ok)">{{ b.done }}</td>
+        <td class="tnum" style="color:var(--err)">{{ b.bad }}</td>
+        <td style="width:140px"><div class="bar ok"><i style="width:{{ (b.done / b.total * 100) if b.total else 0 }}%"></i></div></td>
+        <td class="muted">{{ b.created_at|ts }}</td>
+        <td><a class="btn secondary small" href="/batches/{{ b.id }}">查看</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty">还没有导入过花名册。</div>{% endif %}
+</div>
+
+{% if quarantine %}
+<div class="panel">
+  <h2>隔离区（需要人工确认的行）</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>批次</th><th>行号</th><th>原因</th><th>原始内容</th><th>时间</th></tr></thead>
+    <tbody>
+    {% for q in quarantine %}
+      <tr><td class="mono">{{ (q.batch_id or '')[:10] }}</td><td class="tnum">{{ q.row_no }}</td>
+          <td><span class="badge warn">{{ q.reason }}</span></td>
+          <td style="font-size:12px;max-width:520px">{{ q.pretty }}</td>
+          <td class="muted">{{ q.created_at }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+{% endblock %}

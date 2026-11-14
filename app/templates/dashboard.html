@@ -1,0 +1,118 @@
+{% extends "layout.html" %}
+{% macro status_badge(st) -%}
+<span class="badge {{ status_class(st) }}">{{ status_label(st) }}</span>
+{%- endmacro %}
+{% macro pct(a, b) -%}
+{{ ((a / b * 100) if b else 0) | round(1) }}
+{%- endmacro %}
+{% block title %}总览 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>总览</h1>
+    <div class="sub">今天 {{ today }} · 引擎 {{ '运行中' if engine.running else '已暂停' }} ·
+      调度模式 {% if mode == 'peak' %}月底高峰（限流）{% elif mode == 'offpeak' %}平峰{% else %}常规{% endif %}</div>
+  </div>
+  <div class="row">
+    <button class="btn {{ 'danger' if engine.running else '' }}" data-action="{{ 'engine-stop' if engine.running else 'engine-start' }}">
+      {{ '暂停引擎' if engine.running else '启动引擎' }}
+    </button>
+    <a class="btn secondary" href="/import">导入花名册</a>
+  </div>
+</div>
+
+<div class="stat-row">
+  <div class="card-stat"><div class="label">待办总量</div><div class="value">{{ stats.total }}</div>
+    <div class="foot">本月新建 {{ stats.this_month }}</div></div>
+  <div class="card-stat"><div class="label">已完成</div><div class="value" style="color:var(--ok)">{{ stats.success }}</div>
+    <div class="foot">成功率 {{ stats.success_rate }}%</div></div>
+  <div class="card-stat"><div class="label">执行中 / 排队</div>
+    <div class="value" style="color:var(--info)">{{ stats.running + stats.queued }}</div>
+    <div class="foot">执行中 {{ stats.running }} · 排队 {{ stats.queued }}</div></div>
+  <div class="card-stat"><div class="label">待修正 / 失败</div>
+    <div class="value" style="color:var(--err)">{{ stats.needs_fix + stats.failed }}</div>
+    <div class="foot">待修正 {{ stats.needs_fix }} · 失败 {{ stats.failed }}</div></div>
+  <div class="card-stat"><div class="label">今日回执归档</div><div class="value">{{ stats.receipts_today }}</div>
+    <div class="foot">累计 {{ stats.receipts_total }} 份</div></div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1.35fr 1fr;">
+  <div class="panel">
+    <div class="page-head" style="margin-bottom:10px"><h2>申报进度</h2>
+      <span class="muted" style="font-size:12px">按险种</span></div>
+    {% for w in window_stats %}
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">
+        <span><b>{{ w.name }}</b> <span class="muted">共 {{ w.total }}</span></span>
+        <span class="muted">成功 {{ w.success }} / {{ w.total }}</span>
+      </div>
+      <div class="bar {{ 'ok' if w.total and w.success == w.total }}">
+        <i style="width: {{ (w.success / w.total * 100) if w.total else 0 }}%"></i>
+      </div>
+    </div>
+    {% endfor %}
+
+    <h2 style="margin-top:22px">状态分布</h2>
+    {% set total = stats.total or 1 %}
+    <div class="segbar">
+      {% for seg in segments %}
+        <span title="{{ seg.label }} {{ seg.count }}" style="width:{{ seg.count / total * 100 }}%;background:{{ seg.color }}"></span>
+      {% endfor %}
+    </div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      {% for seg in segments if seg.count %}
+        <span class="chip"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:{{ seg.color }}"></i>
+          {{ seg.label }} {{ seg.count }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>今天需要你处理的</h2>
+    {% if attention %}
+    <table>
+      <tbody>
+      {% for a in attention %}
+        <tr>
+          <td style="width:36px"><span class="badge {{ 'err' if a.kind=='err' else 'warn' }}">{{ a.count }}</span></td>
+          <td><a href="{{ a.link }}">{{ a.title }}</a><div class="muted" style="font-size:12px">{{ a.detail }}</div></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <div class="empty">暂无需要人工介入的事项 👍</div>
+    {% endif %}
+
+    <h2 style="margin-top:22px">最近导入批次</h2>
+    {% if batches %}
+    <table>
+      <tbody>
+      {% for b in batches %}
+        <tr><td><span class="mono">{{ b.id[:8] }}</span><div class="muted" style="font-size:11.5px">{{ b.filename }}</div></td>
+            <td class="tnum" style="text-align:right">{{ b.total }} 行</td>
+            <td style="text-align:right"><a class="btn secondary small" href="/batches/{{ b.id }}">查看</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<div class="empty">还没有导入过花名册。<a href="/import">立即导入</a></div>{% endif %}
+  </div>
+</div>
+
+<div class="panel">
+  <div class="page-head" style="margin-bottom:10px"><h2>最近完成</h2><a href="/receipts" style="font-size:12.5px">全部回执 →</a></div>
+  {% if recent %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>企业</th><th>业务</th><th>姓名</th><th>生效月</th><th>受理编号</th><th>完成时间</th></tr></thead>
+    <tbody>
+    {% for r in recent %}
+      <tr><td class="mono">{{ r.id }}</td><td>{{ r.enterprise_name }}</td>
+          <td>{{ r.action_label }}</td><td>{{ r.employee_name }}</td><td>{{ r.effective_month }}</td>
+          <td class="mono"><a href="/receipts/{{ r.id }}">{{ r.receipt_no }}</a></td>
+          <td class="muted">{{ r.completed_at|ts }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<div class="empty">还没有完成的任务。</div>{% endif %}
+</div>
+{% endblock %}

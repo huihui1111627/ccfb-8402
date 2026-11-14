@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}审计日志 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>审计日志</h1><div class="sub">共 {{ total }} 条 · 谁在什么时候对哪个任务做了什么，全部留痕</div></div>
+</div>
+<div class="panel">
+  <div class="table-wrap"><table>
+    <thead><tr><th style="width:170px">时间</th><th style="width:110px">操作者</th><th style="width:180px">动作</th>
+      <th>企业 / 任务</th><th>详情</th></tr></thead>
+    <tbody>
+    {% for e in events %}
+      <tr><td class="muted mono" style="font-size:11.5px">{{ e.ts }}</td>
+          <td>{{ e.actor }}</td>
+          <td><span class="badge {{ 'ok' if 'success' in e.action else ('warn' if ('fix' in e.action or 'retry' in e.action or 'skip' in e.action) else ('err' if ('fail' in e.action or 'crash' in e.action) else 'muted')) }}">{{ e.action }}</span></td>
+          <td>{% if e.enterprise_name %}{{ e.enterprise_name }}{% endif %}
+              {% if e.task_id %} · <a href="/tasks/{{ e.task_id }}" class="mono">#{{ e.task_id }}</a>{% endif %}</td>
+          <td class="mono" style="font-size:11px;max-width:520px;overflow:hidden;text-overflow:ellipsis">{{ e.detail or '' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% if pages > 1 %}
+  <div class="row" style="margin-top:16px;justify-content:center">
+    {% for p in range(1, pages + 1) if p <= 30 %}
+      <a class="btn secondary small {{ 'active' if p == page }}" href="/audit?page={{ p }}">{{ p }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}示例市社保网上申报{% endblock %}</title>
+<style>
+  :root { --b:#1f4e8c; --bg:#f2f5f9; --line:#d5dce6; --ok:#1a7f37; --err:#b42318; --warn:#a15c00; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background:var(--bg); color:#1c2430; }
+  .topbar { background:var(--b); color:#fff; padding:0 24px; display:flex; align-items:center; height:56px; }
+  .topbar .brand { font-weight:700; font-size:17px; letter-spacing:.5px; }
+  .topbar .gov { opacity:.75; font-size:12px; margin-left:10px; }
+  .topbar .spacer { flex:1; }
+  .topbar a, .topbar form button { color:#fff; text-decoration:none; font-size:13px; background:none; border:1px solid rgba(255,255,255,.45); padding:5px 10px; border-radius:4px; cursor:pointer; }
+  .wrap { max-width: 860px; margin: 28px auto 60px; padding: 0 16px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:24px; }
+  h1 { font-size:20px; margin:0 0 6px; }
+  h2 { font-size:16px; margin:24px 0 12px; }
+  .muted { color:#5b6775; font-size:13px; }
+  .crumb { font-size:12px; color:#5b6775; margin-bottom:14px; }
+  label { display:block; font-size:13px; font-weight:600; margin:16px 0 6px; }
+  input[type=text], input[type=password], input[type=tel], select {
+    width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:5px; font-size:14px; background:#fff;
+  }
+  input:focus, select:focus { outline:2px solid #b9d0ee; border-color:#6f9bd1; }
+  .btn { display:inline-block; background:var(--b); color:#fff; border:0; padding:10px 22px; border-radius:5px; font-size:14px; cursor:pointer; text-decoration:none; }
+  .btn.secondary { background:#fff; color:var(--b); border:1px solid var(--b); }
+  .btn.danger { background:#b42318; }
+  .actions { margin-top:24px; display:flex; gap:12px; align-items:center; }
+  .alert { padding:10px 14px; border-radius:6px; font-size:13px; margin:14px 0; border:1px solid; }
+  .alert.err { background:#fdecea; border-color:#f5c6c2; color:var(--err); }
+  .alert.ok { background:#e8f5ec; border-color:#bfe3cb; color:var(--ok); }
+  .alert.warn { background:#fff6e5; border-color:#f2d9a8; color:var(--warn); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { border-bottom:1px solid var(--line); padding:9px 10px; text-align:left; vertical-align:top; }
+  th { background:#f7f9fc; font-weight:600; }
+  .steps { display:flex; gap:8px; margin:18px 0 4px; }
+  .steps div { flex:1; text-align:center; font-size:12px; padding:7px 4px; border-radius:4px; background:#eef2f7; color:#6b7785; }
+  .steps div.on { background:var(--b); color:#fff; font-weight:600; }
+  .steps div.done { background:#dcebdf; color:#1a7f37; }
+  .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 16px; font-size:14px; }
+  .kv dt { color:#5b6775; }
+  .kv dd { margin:0; font-weight:500; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:12px; background:#eef2f7; color:#40505f; }
+  .badge.ok { background:#e8f5ec; color:var(--ok); }
+  .badge.err { background:#fdecea; color:var(--err); }
+  .footer { text-align:center; color:#8a94a1; font-size:12px; margin:28px 0; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .session { font-size:12px; color:#5b6775; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="brand">{% block brand %}示例市社会保险网上申报系统{% endblock %}</span>
+  <span class="gov">演示环境 · 非真实政务网站</span>
+  <span class="spacer"></span>
+  {% if session %}
+    <span class="session" style="margin-right:14px;color:#dbe6f4">
+      {{ session.enterprise_code }} · 剩余 <span id="ttl" data-ttl="{{ ttl }}">{{ ttl }}</span> 秒
+    </span>
+    <form method="post" action="{{ base }}/logout" style="display:inline"><button type="submit">退出</button></form>
+  {% endif %}
+</div>
+{% block body %}{% endblock %}
+<div class="footer">示例市人力资源和社会保障局 · 演示用 Mock 站点，数据仅供本地测试</div>
+<script>
+(function(){
+  var el=document.getElementById('ttl'); if(!el) return; var t=+el.dataset.ttl;
+  setInterval(function(){ t=Math.max(0,t-1); el.textContent=t; if(t===0){el.textContent='0';} },1000);
+})();
+</script>
+</body>
+</html>

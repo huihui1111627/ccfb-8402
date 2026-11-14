@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+{% block title %}执行队列 · 申报 RPA 控制台{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>执行队列</h1>
+    <div class="sub">同企业串行、多企业并行 · 全局并发 {{ global_c }}{% if per_min %} · 每分钟限 {{ per_min }} 次{% endif %}</div></div>
+  <div class="row">
+    <a class="btn secondary {{ 'active' if mode=='normal' }}" data-action="rate-mode" data-mode="normal">常规</a>
+    <a class="btn secondary {{ 'active' if mode=='offpeak' }}" data-action="rate-mode" data-mode="offpeak">平峰</a>
+    <a class="btn secondary {{ 'active' if mode=='peak' }}" data-action="rate-mode" data-mode="peak">月底高峰限流</a>
+    <button class="btn {{ 'danger' if engine_running else '' }}" data-action="{{ 'engine-stop' if engine_running else 'engine-start' }}">
+      {{ '暂停引擎' if engine_running else '启动引擎' }}</button>
+  </div>
+</div>
+
+{% if mode == 'peak' %}
+<div class="alert warn">月底高峰模式：全局并发已降至 2，并启用了每分钟 20 次的令牌桶。
+  超出的申报会停留在「排队中」，幂等与执行顺序不受影响。</div>
+{% endif %}
+
+<div class="stat-row">
+  <div class="card-stat"><div class="label">执行中</div><div class="value" style="color:var(--info)">{{ by_status.get('running', [])|length }}</div></div>
+  <div class="card-stat"><div class="label">排队中</div><div class="value">{{ by_status.get('queued', [])|length + by_status.get('pending', [])|length }}</div>
+    <div class="foot">含待执行</div></div>
+  <div class="card-stat"><div class="label">累计已完成</div>
+    <div class="value" style="color:var(--ok)">{{ db_counts.get('success', 0) + db_counts.get('duplicate', 0) }}</div>
+    <div class="foot">本次运行新增 {{ stats.get('success', 0) }}</div></div>
+  <div class="card-stat"><div class="label">待修正 / 失败</div>
+    <div class="value" style="color:var(--warn)">{{ db_counts.get('needs_fix', 0) }}</div>
+    <div class="foot">失败 {{ db_counts.get('failed', 0) }}</div></div>
+  <div class="card-stat"><div class="label">本次执行次数</div><div class="value">{{ stats.get('attempts', 0) }}</div>
+    <div class="foot">含自动重试</div></div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1.4fr 1fr">
+  <div class="panel">
+    <h2>运行中的浏览器任务 <span class="badge running">{{ by_status.get('running', [])|length }}</span></h2>
+    {% if by_status.get('running') %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>企业</th><th>业务</th><th>姓名</th><th>阶段</th><th>开始</th></tr></thead>
+      <tbody>
+      {% for t in by_status.get('running') %}
+        <tr><td class="mono"><a href="/tasks/{{ t.id }}">{{ t.id }}</a></td>
+            <td class="mono">{{ t.enterprise_code }}</td><td>{{ t.action_label }}</td><td>{{ t.employee_name }}</td>
+            <td><span class="badge info">{{ t.last_stage or 'init' }}</span></td>
+            <td class="muted">{{ t.claimed_at|ts }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<div class="empty">当前没有正在执行的浏览器任务。</div>{% endif %}
+
+    <h2 style="margin-top:22px">排队等待 <span class="muted" style="font-weight:400;font-size:12px">
+      按企业优先级 → 尝试次数 → 入队顺序</span></h2>
+    {% set waiting = by_status.get('queued', []) + by_status.get('pending', []) + by_status.get('retry', []) + by_status.get('unknown', []) %}
+    {% if waiting %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>#</th><th>企业</th><th>业务</th><th>姓名</th><th>状态</th><th>尝试</th><th>下次重试</th></tr></thead>
+      <tbody>
+      {% for t in waiting[:40] %}
+        <tr><td class="mono"><a href="/tasks/{{ t.id }}">{{ t.id }}</a></td>
+            <td class="mono">{{ t.enterprise_code }}</td><td>{{ t.action_label }}</td><td>{{ t.employee_name }}</td>
+            <td><span class="badge {{ status_class(t.status) }}">{{ status_label(t.status) }}</span></td>
+            <td class="tnum">{{ t.attempts }}</td><td class="muted">{{ t.next_retry_at or '—' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<div class="empty">队列已空。</div>{% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>企业并发占用</h2>
+    <p class="muted" style="font-size:12px;margin-top:-6px">每家企业在同一时刻只跑一个任务；企业并行度由全局并发度约束。</p>
+    <table>
+      <thead><tr><th>企业</th><th>运行</th><th>等待</th><th>占比</th></tr></thead>
+      <tbody>
+      {% for e in ent_load %}
+        <tr><td><span class="mono">{{ e.code }}</span><div class="muted" style="font-size:11.5px">{{ e.name }}</div></td>
+            <td class="tnum">{{ e.running }}</td><td class="tnum">{{ e.waiting }}</td>
+            <td style="width:100px"><div class="bar"><i style="width:{{ (e.running / (e.running + e.waiting) * 100) if (e.running + e.waiting) else 0 }}%"></i></div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <h2 style="margin-top:22px">令牌桶</h2>
+    <dl class="kv" style="grid-template-columns:110px 1fr;font-size:12.5px">
+      <dt>额度</dt><dd>{{ (limiter.per_minute if limiter else 0) or '不限' }}{% if limiter and limiter.per_minute %} 次/分钟{% endif %}</dd>
+      <dt>当前令牌</dt><dd class="tnum">{{ '%.2f'|format(limiter.tokens) if limiter else '—' }}</dd>
+      <dt>全局并发</dt><dd>{{ global_c }}</dd>
+      <dt>单企业并发</dt><dd>1（强制串行）</dd>
+    </dl>
+    <div class="alert info" style="font-size:12px">限流只影响吞吐，不影响幂等：
+      被限流的任务重新入队时会先核对站点是否已受理。</div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script>document.body.dataset.autorefresh = '1';</script>{% endblock %}
